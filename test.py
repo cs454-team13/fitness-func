@@ -10,11 +10,13 @@ from pylint.pyreverse.inspector import Linker, project_from_files
 
 import astroid.helpers
 
-def compute_tcc(cls) -> int:
-    for base_class in cls.bases:
-        print(f"{cls.name} has parent class {base_class.name}")
-    for attr_name in cls.instance_attrs:
-        print(f"{cls.name} has instance attribute {attr_name}")
+
+def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
+    """Computes the TCC of a class."""
+    # for base_class in cls.bases:
+    #     print(f"{cls.name} has parent class {base_class.name}")
+    # for attr_name in cls.instance_attrs:
+    #     print(f"{cls.name} has instance attribute {attr_name}")
 
     # Mapping of (method name) -> (instance attributes accessed)
     method_to_attrs_accessed: typing.Dict[str, typing.Set[str]] = {}
@@ -63,12 +65,12 @@ class AstSelfFinder:
 #     of all instance attributes used by this function.
 #     """
 #     attr_names = []
-    # for node in ast.walk(fn_node):
-    #     # Detect self.attr_name
-    #     if isinstance(node, astroid.nodes.Attribute):
-    #         if isinstance(node.value, astroid.nodes.Name) and node.id == "self":
-    #             print(f"    Attribute access detected: self.{node.attr}")
-    # return attr_names
+# for node in ast.walk(fn_node):
+#     # Detect self.attr_name
+#     if isinstance(node, astroid.nodes.Attribute):
+#         if isinstance(node.value, astroid.nodes.Name) and node.id == "self":
+#             print(f"    Attribute access detected: self.{node.attr}")
+# return attr_names
 
 
 def main() -> None:
@@ -81,15 +83,19 @@ def main() -> None:
 
     # astpretty.pprint(root)
 
-    project = project_from_files(["samples/sample1.py"], project_name="sample-project")
+    project = project_from_files(["samples"], project_name="sample-project")
     linker = Linker(project, tag=True)
     # We need this to make the linker actually work on the project
     linker.visit_project(project)
 
-    sample_module = project.modules[0]
-    parent_class, child_class = sample_module.body
-    print(compute_tcc(parent_class))
-    print(compute_tcc(child_class))
+    for module in project.modules:
+        for statement in module.body:
+            if isinstance(statement, astroid.nodes.ClassDef):
+                print(
+                    f"Module {module.name}: TCC of {statement.name} =",
+                    compute_tcc(statement),
+                )
+
 
 if __name__ == "__main__":
     main()

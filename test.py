@@ -6,7 +6,7 @@ import itertools
 import astpretty
 import astroid.nodes
 import astroid.node_classes
-from pylint.pyreverse.inspector import Linker, project_from_files
+from pylint.pyreverse import inspector
 
 import astroid.helpers
 
@@ -73,7 +73,7 @@ class AstSelfFinder:
 # return attr_names
 
 
-def main() -> None:
+def main() -> inspector.Project:
     """Script entrypoint"""
     PROJECT_DIR = "samples"
 
@@ -83,8 +83,8 @@ def main() -> None:
 
     # astpretty.pprint(root)
 
-    project = project_from_files(["samples"], project_name="sample-project")
-    linker = Linker(project, tag=True)
+    project = inspector.project_from_files(["samples"], project_name="sample-project")
+    linker = inspector.Linker(project, tag=True)
     # We need this to make the linker actually work on the project
     linker.visit_project(project)
 
@@ -96,6 +96,8 @@ def main() -> None:
                     compute_tcc(statement),
                 )
 
+    # Return the project object so we can debug it in the console
+    return project
 
 if __name__ == "__main__":
     main()

@@ -9,24 +9,6 @@ from pylint.pyreverse.inspector import Linker, project_from_files
 
 import astroid.helpers
 
-# filename = "samples/sample1.py"
-# with open(filename, encoding="utf8") as sample_py:
-#     root = ast.parse(sample_py.read(), filename=filename)
-
-# astpretty.pprint(root)
-
-PROJECT_DIR = "samples"
-
-
-project = project_from_files(["samples/sample1.py"], project_name="sample-project")
-linker = Linker(project, tag=True)
-# We need this to make the linker actually work on the project
-linker.visit_project(project)
-
-sample_module = project.modules[0]
-parent_class, child_class = sample_module.body
-
-
 def compute_tcc(cls) -> int:
     for base_class in cls.bases:
         print(f"{cls.name} has parent class {base_class.name}")
@@ -56,7 +38,6 @@ def compute_tcc(cls) -> int:
     return tcc_sum / (k * (k - 1))
 
 
-
 class AstSelfFinder:
     """Custom AST walker for astroid
     Needed because we don't have an equivalent of ast.walk() or ast.NodeVisitor
@@ -77,18 +58,38 @@ class AstSelfFinder:
             self.visit(child)
 
 
-def find_uses_of_self(fn_node) -> typing.List[str]:
-    """Given an AST node representing an instance method, attempts to find names
-    of all instance attributes used by this function.
-    """
-    attr_names = []
+# def find_uses_of_self(fn_node) -> typing.List[str]:
+#     """Given an AST node representing an instance method, attempts to find names
+#     of all instance attributes used by this function.
+#     """
+#     attr_names = []
     # for node in ast.walk(fn_node):
     #     # Detect self.attr_name
     #     if isinstance(node, astroid.nodes.Attribute):
     #         if isinstance(node.value, astroid.nodes.Name) and node.id == "self":
     #             print(f"    Attribute access detected: self.{node.attr}")
-    return attr_names
+    # return attr_names
 
 
-print(compute_tcc(parent_class))
-print(compute_tcc(child_class))
+def main() -> None:
+    """Script entrypoint"""
+    PROJECT_DIR = "samples"
+
+    # filename = "samples/sample1.py"
+    # with open(filename, encoding="utf8") as sample_py:
+    #     root = ast.parse(sample_py.read(), filename=filename)
+
+    # astpretty.pprint(root)
+
+    project = project_from_files(["samples/sample1.py"], project_name="sample-project")
+    linker = Linker(project, tag=True)
+    # We need this to make the linker actually work on the project
+    linker.visit_project(project)
+
+    sample_module = project.modules[0]
+    parent_class, child_class = sample_module.body
+    print(compute_tcc(parent_class))
+    print(compute_tcc(child_class))
+
+if __name__ == "__main__":
+    main()

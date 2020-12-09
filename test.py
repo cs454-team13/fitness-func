@@ -1,6 +1,7 @@
 import ast
 import typing
 import pprint
+import itertools
 
 import astpretty
 import astroid.nodes
@@ -28,14 +29,13 @@ def compute_tcc(cls) -> int:
     k = len(method_to_attrs_accessed)
     assert k > 1, f"The class must have at least 2 methods ({cls.name} only has {k})"
 
-    tcc_sum = 0
-    for method1 in method_to_attrs_accessed:
-        for method2 in method_to_attrs_accessed:
-            if method1 == method2:
-                continue
-            if method_to_attrs_accessed[method1] & method_to_attrs_accessed[method2]:
-                tcc_sum += 1
-    return tcc_sum / (k * (k - 1))
+    # Contains methods that access a common attribute, i.e CAU
+    cau_methods: typing.Set[typing.Tuple[str, str]] = set()
+    for method1, method2 in itertools.combinations(method_to_attrs_accessed, 2):
+        assert method1 < method2, "Not sorted!"
+        if method_to_attrs_accessed[method1] & method_to_attrs_accessed[method2]:
+            cau_methods.add((method1, method2))
+    return len(cau_methods) / (k * (k - 1) / 2)
 
 
 class AstSelfFinder:

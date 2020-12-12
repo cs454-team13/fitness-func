@@ -12,35 +12,51 @@ from pylint.pyreverse import inspector
 import astroid.helpers
 
 
-def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
-    """Computes the TCC of a class."""
-    # Mapping of (method name) -> (instance attributes accessed)
-    method_to_attrs_accessed: typing.Dict[str, typing.Set[str]] = {}
+def extract_methods(cls: astroid.nodes.ClassDef) -> typing.Tuple[typing.Dict[str, typing.List[str]], typing.Set[str]]:
+    """Extracts all methods and attributes of a class, including inherited
+    methods.
+    For methods, extract all attributes accessed. Skip __init__().
+    """
+    # Mapping of method name -> attributes accessed
+    methods: typing.Dict[str, typing.List[str]] = {}
+    # All attributes owned by this class, including inherited attributes,
+    # and attributes
+    all_attributes: typing.Set[str] = set(cls.instance_attrs)
+
     for method in cls.mymethods():
         finder = AstSelfFinder()
         finder.visit(method)
-        method_to_attrs_accessed[method.name] = set(finder.attr_names_accessed)
+        attributes_accessed = set(finder.attr_names_accessed)
 
-    k = len(method_to_attrs_accessed)
+        if method.name != "__init__":
+            methods[method.name] = attributes_accessed
+
+    return methods, all_attributes
+
+
+def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
+    """Computes the TCC of a class."""
+    methods, attributes = extract_methods(cls)
+
+    k = len(methods)
     if k <= 1:
         print(f"TCC: Ignoring class {cls.name} because it has only {k} method")
         return None
 
     # Contains methods that access a common attribute, i.e CAU
     cau_methods: typing.Set[typing.Tuple[str, str]] = set()
-    for method1, method2 in itertools.combinations(method_to_attrs_accessed, 2):
+    for method1, method2 in itertools.combinations(methods, 2):
         assert method1 < method2, "Not sorted!"
-        if method_to_attrs_accessed[method1] & method_to_attrs_accessed[method2]:
+        if methods[method1] & methods[method2]:
             cau_methods.add((method1, method2))
     return len(cau_methods) / (k * (k - 1) / 2)
 
 
 def compute_lscc(cls) -> typing.Optional[None]:
-    methodlist = []
-    for method_name in cls.mymethods():
-        methodlist.append(method_name)
-    l = len(cls.instance_attrs)
-    k = len(methodlist) - 1
+    methods, attributes = extract_methods(cls)
+
+    l = len(attributes)
+    k = len(methods)
     if l == 0 and k == 0:
         print("input error : there is no attribue and method")
         return None
@@ -50,16 +66,20 @@ def compute_lscc(cls) -> typing.Optional[None]:
         return 1
     else:
         sum = 0
-        for attr_name in cls.instance_attrs:
+        for attr_name in attributes:
             count = 0
-            for method_name in cls.mymethods():
-                if method_name.name == "__init__":
-                    pass
-                else:
-                    finder = AstSelfFinder()
-                    finder.visit(method_name)
-                    if attr_name in finder.attr_names_accessed:
-                        count = count + 1
+            for method, attrs_accessed in methods.items():
+                if attr_name in attrs_accessed:
+                    count += 1
+
+            # for method_name in cls.mymethods():
+            #     if method_name.name == "__init__":
+            #         pass
+            #     else:
+            #         finder = AstSelfFinder()
+            #         finder.visit(method_name)
+            #         if attr_name in finder.attr_names_accessed:
+            #             count = count + 1
             sum = sum + (count * (count - 1))
         sum = sum / (l * k * (k - 1))
         return sum
@@ -91,8 +111,11 @@ def compute_project_score(project_path: str) -> ProjectScore:
     for module in project.modules:
         for statement in module.body:
             if isinstance(statement, astroid.nodes.ClassDef):
-                tcc_values.append(compute_tcc(statement))
-                lscc_values.append(compute_lscc(statement))
+                tcc = compute_tcc(statement)
+                lscc = compute_lscc(statement)
+                print(f"{statement.name}: TCC = {tcc}, LSCC = {lscc}")
+                tcc_values.append(tcc)
+                lscc_values.append(lscc)
 
     return ProjectScore(
         lscc=statistics.mean(filter(lambda x: x is not None, lscc_values)),

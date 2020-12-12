@@ -22,7 +22,9 @@ def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
         method_to_attrs_accessed[method.name] = set(finder.attr_names_accessed)
 
     k = len(method_to_attrs_accessed)
-    assert k > 1, f"The class must have at least 2 methods ({cls.name} only has {k})"
+    if k <= 1:
+        print(f"TCC: Ignoring class {cls.name} because it has only {k} method")
+        return None
 
     # Contains methods that access a common attribute, i.e CAU
     cau_methods: typing.Set[typing.Tuple[str, str]] = set()

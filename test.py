@@ -113,7 +113,7 @@ def compute_project_score(project_path: str) -> ProjectScore:
             if isinstance(statement, astroid.nodes.ClassDef):
                 tcc = compute_tcc(statement)
                 lscc = compute_lscc(statement)
-                print(f"{statement.name}: TCC = {tcc}, LSCC = {lscc}")
+                print(f"{statement.name} LSCC = {lscc}, TCC = {tcc}")
                 tcc_values.append(tcc)
                 lscc_values.append(lscc)
 

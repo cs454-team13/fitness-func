@@ -2,6 +2,7 @@ import ast
 import typing
 import pprint
 import itertools
+import statistics
 
 import astpretty
 import astroid.nodes
@@ -39,34 +40,70 @@ def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
             cau_methods.add((method1, method2))
     return len(cau_methods) / (k * (k - 1) / 2)
 
-def compute_lscc(cls) -> int :
-    methodlist=[]
+
+def compute_lscc(cls) -> typing.Optional[None]:
+    methodlist = []
     for method_name in cls.mymethods():
         methodlist.append(method_name)
     l = len(cls.instance_attrs)
-    k = len(methodlist)-1
-    if (l==0 and k==0):
+    k = len(methodlist) - 1
+    if l == 0 and k == 0:
         print("input error : there is no attribue and method")
-    elif (l==0) and (k>1):
+        return None
+    elif (l == 0) and (k > 1):
         return 0
-    elif (l>0 and k==0) or k==1:
+    elif (l > 0 and k == 0) or k == 1:
         return 1
     else:
-        sum=0
+        sum = 0
         for attr_name in cls.instance_attrs:
             count = 0
             for method_name in cls.mymethods():
-                if method_name.name == "__init__" :
+                if method_name.name == "__init__":
                     pass
-                else :
+                else:
                     finder = AstSelfFinder()
                     finder.visit(method_name)
                     if attr_name in finder.attr_names_accessed:
                         count = count + 1
-            sum = sum + (count*(count-1))
-        sum = sum / (l*k*(k-1))
+            sum = sum + (count * (count - 1))
+        sum = sum / (l * k * (k - 1))
         return sum
 
+
+class ProjectScore(typing.NamedTuple):
+    """Scores of a project"""
+
+    lscc: float
+    tcc: float
+
+
+def compute_project_score(project_path: str) -> ProjectScore:
+    """Computes the score for a project.
+
+    Returns:
+        An object with the fields:
+            obj.lscc: LSCC score
+            obj.tcc:  TCC score
+    """
+    project = inspector.project_from_files([project_path], project_name="the-project")
+    linker = inspector.Linker(project, tag=True)
+    # We need this to make the linker actually work on the project
+    linker.visit_project(project)
+
+    tcc_values = []
+    lscc_values = []
+
+    for module in project.modules:
+        for statement in module.body:
+            if isinstance(statement, astroid.nodes.ClassDef):
+                tcc_values.append(compute_tcc(statement))
+                lscc_values.append(compute_lscc(statement))
+
+    return ProjectScore(
+        lscc=statistics.mean(filter(lambda x: x is not None, lscc_values)),
+        tcc=statistics.mean(filter(lambda x: x is not None, tcc_values)),
+    )
 
 
 class AstSelfFinder:
@@ -102,31 +139,13 @@ class AstSelfFinder:
 # return attr_names
 
 
-def main() -> inspector.Project:
+def main() -> None:
     print("=================TCC=================")
     """Script entrypoint"""
     PROJECT_DIR = "samples"
 
-    # filename = "samples/sample1.py"
-    # with open(filename, encoding="utf8") as sample_py:
-    #     root = ast.parse(sample_py.read(), filename=filename)
+    print(compute_project_score(PROJECT_DIR))
 
-    # astpretty.pprint(root)
-
-    project = inspector.project_from_files(["samples"], project_name="sample-project")
-    linker = inspector.Linker(project, tag=True)
-    # We need this to make the linker actually work on the project
-    linker.visit_project(project)
-
-    for module in project.modules:
-        for statement in module.body:
-            if isinstance(statement, astroid.nodes.ClassDef):
-                print(
-                    f"Module {module.name}: {statement.name} has TCC = {compute_tcc(statement)}, LSCC = {compute_lscc(statement)}",
-                )
-
-    # Return the project object so we can debug it in the console
-    return project
 
 if __name__ == "__main__":
     main()

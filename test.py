@@ -39,6 +39,35 @@ def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
             cau_methods.add((method1, method2))
     return len(cau_methods) / (k * (k - 1) / 2)
 
+def compute_lscc(cls) -> int :
+    methodlist=[]
+    for method_name in cls.mymethods():
+        methodlist.append(method_name)
+    l = len(cls.instance_attrs)
+    k = len(methodlist)-1
+    if (l==0 and k==0):
+        print("input error : there is no attribue and method")
+    elif (l==0) and (k>1):
+        return 0
+    elif (l>0 and k==0) or k==1:
+        return 1
+    else:
+        sum=0
+        for attr_name in cls.instance_attrs:
+            count = 0
+            for method_name in cls.mymethods():
+                if method_name.name == "__init__" :
+                    pass
+                else :
+                    finder = AstSelfFinder()
+                    finder.visit(method_name)
+                    if attr_name in finder.attr_names_accessed:
+                        count = count + 1
+            sum = sum + (count*(count-1))
+        sum = sum / (l*k*(k-1))
+        return sum
+
+
 
 class AstSelfFinder:
     """Custom AST walker for astroid
@@ -74,6 +103,7 @@ class AstSelfFinder:
 
 
 def main() -> inspector.Project:
+    print("=================TCC=================")
     """Script entrypoint"""
     PROJECT_DIR = "samples"
 
@@ -92,8 +122,7 @@ def main() -> inspector.Project:
         for statement in module.body:
             if isinstance(statement, astroid.nodes.ClassDef):
                 print(
-                    f"Module {module.name}: TCC of {statement.name} =",
-                    compute_tcc(statement),
+                    f"Module {module.name}: {statement.name} has TCC = {compute_tcc(statement)}, LSCC = {compute_lscc(statement)}",
                 )
 
     # Return the project object so we can debug it in the console

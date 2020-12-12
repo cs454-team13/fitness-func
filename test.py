@@ -14,19 +14,11 @@ import astroid.helpers
 
 def compute_tcc(cls: astroid.nodes.ClassDef) -> int:
     """Computes the TCC of a class."""
-    # for base_class in cls.bases:
-    #     print(f"{cls.name} has parent class {base_class.name}")
-    # for attr_name in cls.instance_attrs:
-    #     print(f"{cls.name} has instance attribute {attr_name}")
-
     # Mapping of (method name) -> (instance attributes accessed)
     method_to_attrs_accessed: typing.Dict[str, typing.Set[str]] = {}
     for method in cls.mymethods():
-        # print(f"{cls.name} has method {method.name}()")
-        # pprint.pprint(list(method.get_children()))
         finder = AstSelfFinder()
         finder.visit(method)
-        # print(f"  Method {method.name}() accesses instance attributes: {', '.join(finder.attr_names_accessed)}")
         method_to_attrs_accessed[method.name] = set(finder.attr_names_accessed)
 
     k = len(method_to_attrs_accessed)
